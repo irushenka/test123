@@ -1,5 +1,6 @@
 package ru.netology.nmedia.ui
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -7,6 +8,7 @@ import android.graphics.PointF
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
+import android.view.animation.LinearInterpolator
 import androidx.core.content.withStyledAttributes
 import ru.netology.nmedia.R
 import ru.netology.nmedia.util.AndroidUtils
@@ -26,6 +28,10 @@ class StatsView @JvmOverloads constructor(
     private var lineWidth = AndroidUtils.dp(context, 5F).toFloat()
     private var fontSize = AndroidUtils.dp(context, 40F).toFloat()
     private var colors = emptyList<Int>()
+
+    private var progress = 0F
+    private var valueAnimator: ValueAnimator? = null
+    private var delta: Float = 0F
 
     init {
         context.withStyledAttributes(attrs, R.styleable.StatsView) {
@@ -56,7 +62,7 @@ class StatsView @JvmOverloads constructor(
                 result.add(item/sum)
             }
             field = result
-            invalidate()
+            update()
         }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -89,10 +95,34 @@ class StatsView @JvmOverloads constructor(
         )
     }
 
+    private fun update() {
+        valueAnimator?.let {
+            it.removeAllListeners()
+            it.cancel()
+        }
+        progress = 0F
+
+        valueAnimator = ValueAnimator.ofFloat(0F, 1F).apply {
+            addUpdateListener { anim ->
+                progress = anim.animatedValue as Float
+                delta += percentToDegree(progress)
+                invalidate()
+            }
+            duration = 2000
+            interpolator = LinearInterpolator()
+        }.also {
+            it.start()
+        }
+    }
+
     private fun randomColor() = Random.nextInt(0xFF000000.toInt(), 0xFFFFFFFF.toInt())
 
     private fun paintOval(index: Int, angle: Float, startFrom: Float, canvas: Canvas) {
         paint.color = colors.getOrNull(index) ?: randomColor()
-        canvas.drawArc(oval, startFrom, angle, false, paint)
+        canvas.drawArc(oval, startFrom + delta,  angle * progress, false, paint)
+    }
+
+    private fun percentToDegree(percent: Float): Float {
+        return percent * 6F
     }
 }
